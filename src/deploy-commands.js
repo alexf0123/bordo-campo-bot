@@ -14,7 +14,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName("ticketpanel")
-    .setDescription("Invia il pannello ticket")
+    .setDescription("Invia il pannello ticket nel canale configurato")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 ].map((command) => command.toJSON());
 
@@ -25,10 +25,7 @@ const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
     console.log("⏳ Registrazione comandi slash...");
 
     await rest.put(
-      Routes.applicationGuildCommands(
-        process.env.CLIENT_ID,
-        config.MAIN_GUILD_ID
-      ),
+      Routes.applicationGuildCommands(process.env.CLIENT_ID, config.MAIN_GUILD_ID),
       { body: commands }
     );
 
