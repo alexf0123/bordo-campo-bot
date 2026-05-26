@@ -6,6 +6,10 @@ const {
   Partials,
 } = require("discord.js");
 
+const supabase = require("./database");
+const config = require("./config");
+const messageCreate = require("./events/messageCreate");
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -22,8 +26,11 @@ const client = new Client({
   ],
 });
 
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log(`✅ Bot online come ${client.user.tag}`);
+  console.log("✅ Supabase collegato");
 });
+
+client.on("messageCreate", messageCreate);
 
 client.login(process.env.DISCORD_TOKEN);
