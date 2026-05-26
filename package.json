@@ -1,5 +1,5 @@
 {
-  "name": "bordo-campo-ticket-bot",
+  "name": "bordo-campo-bot",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
-    "discord.js": "^14.24.0",
+    "canvas": "^3.2.3",
+    "discord.js": "^14.26.4",
     "dotenv": "^17.2.0"
   }
 }
