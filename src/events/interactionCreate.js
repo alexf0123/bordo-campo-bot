@@ -1,4 +1,5 @@
 const {
+  AttachmentBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -9,10 +10,95 @@ const {
 } = require("discord.js");
 
 const config = require("../config");
+const supabase = require("../database");
+const { addXP } = require("../services/xpService");
+const { createProfileCard } = require("../cards/profileCard");
 
 const STAFF_LOG_CHANNEL_ID = config.CHANNELS.STAFF_LOGS;
 const TICKET_PANEL_CHANNEL_ID = config.CHANNELS.TICKET_PANEL;
 const TICKET_CATEGORY_ID = config.TICKETS.CATEGORY_ID;
+
+async function getUserRank(userId) {
+  const { data } = await supabase
+    .from("users")
+    .select("user_id, xp")
+    .order("xp", { ascending: false });
+
+  if (!data) return "-";
+  const index = data.findIndex((u) => u.user_id === userId);
+  return index === -1 ? "-" : index + 1;
+}
+
+async function handleProfilo(interaction) {
+  await interaction.deferReply();
+
+  const { data: user, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("user_id", interaction.user.id)
+    .single();
+
+  if (error || !user) {
+    return interaction.editReply("Non hai ancora dati XP. Scrivi qualche messaggio valido per iniziare.");
+  }
+
+  const rank = await getUserRank(interaction.user.id);
+
+  const buffer = await createProfileCard({
+    username: interaction.user.username,
+    avatarUrl: interaction.user.displayAvatarURL({ extension: "png", size: 256 }),
+    level: user.level || 0,
+    xp: user.xp || 0,
+    messages: user.messages || 0,
+    streak: user.streak || 0,
+    rank,
+    levelXp: config.LEVEL_XP,
+  });
+
+  const attachment = new AttachmentBuilder(buffer, {
+    name: "profilo-bordo-campo.png",
+  });
+
+  return interaction.editReply({
+    content: "",
+    embeds: [],
+    files: [attachment],
+  });
+}
+
+async function handleClassifica(interaction) {
+  if (interaction.channelId !== config.CHANNELS.LEVELS) {
+    return interaction.reply({
+      content: "❌ Puoi usare `/classifica` solo nel canale LIVELLI.",
+      flags: 64,
+    });
+  }
+
+  const { data: users } = await supabase
+    .from("users")
+    .select("*")
+    .order("xp", { ascending: false })
+    .limit(10);
+
+  if (!users || users.length === 0) {
+    return interaction.reply({
+      content: "Nessun dato classifica disponibile.",
+      flags: 64,
+    });
+  }
+
+  const text = users
+    .map((u, i) => `**${i + 1}.** <@${u.user_id}> — Livello ${u.level || 0} — ${u.xp || 0} XP`)
+    .join("\n");
+
+  const embed = new EmbedBuilder()
+    .setColor(0xffd700)
+    .setTitle("🏅 Classifica Globale BC")
+    .setDescription(text)
+    .setFooter({ text: "Bordo Campo | Leaderboard" });
+
+  return interaction.reply({ embeds: [embed] });
+}
 
 function getTicketInfo(customId) {
   const types = {
@@ -38,19 +124,14 @@ function getTicketInfo(customId) {
       description: "Spiega la tua richiesta generale. Lo staff ti risponderà appena possibile.",
     },
   };
-
   return types[customId] || null;
 }
 
 async function sendStaffLog(guild, content, embed = null) {
   const logChannel = await guild.channels.fetch(STAFF_LOG_CHANNEL_ID).catch(() => null);
   if (!logChannel) return;
-
-  if (embed) {
-    await logChannel.send({ content: content || "", embeds: [embed] }).catch(() => null);
-  } else {
-    await logChannel.send({ content }).catch(() => null);
-  }
+  if (embed) return logChannel.send({ content: content || "", embeds: [embed] }).catch(() => null);
+  return logChannel.send({ content }).catch(() => null);
 }
 
 async function sendTicketPanel(interaction) {
@@ -66,52 +147,30 @@ async function sendTicketPanel(interaction) {
   const embed = new EmbedBuilder()
     .setColor(0xffd43b)
     .setTitle("🎫 Centro Assistenza — Bordo Campo")
-    .setDescription(
-      [
-        "**Benvenuto nel supporto ufficiale!**",
-        "",
-        "Se hai bisogno di aiuto, scegli una delle opzioni qui sotto.",
-        "",
-        "⚠️ **Nota:** Apri un ticket solo per motivi validi.",
-        "Lo staff ti risponderà il prima possibile.",
-      ].join("\n")
-    )
+    .setDescription([
+      "**Benvenuto nel supporto ufficiale!**",
+      "",
+      "Se hai bisogno di aiuto, scegli una delle opzioni qui sotto.",
+      "",
+      "⚠️ **Nota:** Apri un ticket solo per motivi validi.",
+      "Lo staff ti risponderà il prima possibile.",
+    ].join("\n"))
     .setFooter({ text: "Bordo Campo | Sistema di Supporto Automatico" });
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("ticket_tecnica")
-      .setLabel("Assistenza Tecnica")
-      .setEmoji("🛠️")
-      .setStyle(ButtonStyle.Primary),
-
-    new ButtonBuilder()
-      .setCustomId("ticket_staff")
-      .setLabel("Candidatura Staff")
-      .setEmoji("🧑‍💼")
-      .setStyle(ButtonStyle.Success),
-
-    new ButtonBuilder()
-      .setCustomId("ticket_generale")
-      .setLabel("Assistenza Generale")
-      .setEmoji("💬")
-      .setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId("ticket_tecnica").setLabel("Assistenza Tecnica").setEmoji("🛠️").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("ticket_staff").setLabel("Candidatura Staff").setEmoji("🧑‍💼").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("ticket_generale").setLabel("Assistenza Generale").setEmoji("💬").setStyle(ButtonStyle.Secondary)
   );
 
-  await panelChannel.send({
-    embeds: [embed],
-    components: [row],
-  });
+  await panelChannel.send({ embeds: [embed], components: [row] });
 
   await interaction.reply({
     content: `✅ Pannello ticket inviato in <#${TICKET_PANEL_CHANNEL_ID}>.`,
     flags: 64,
   });
 
-  await sendStaffLog(
-    interaction.guild,
-    `📌 **Pannello ticket inviato** da ${interaction.user.tag} in <#${TICKET_PANEL_CHANNEL_ID}>`
-  );
+  await sendStaffLog(interaction.guild, `📌 **Pannello ticket inviato** da ${interaction.user.tag} in <#${TICKET_PANEL_CHANNEL_ID}>`);
 }
 
 async function createTicket(interaction, info) {
@@ -129,10 +188,7 @@ async function createTicket(interaction, info) {
     });
   }
 
-  const safeUsername = interaction.user.username
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "")
-    .slice(0, 16) || "utente";
+  const safeUsername = interaction.user.username.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 16) || "utente";
 
   const ticketChannel = await interaction.guild.channels.create({
     name: `${info.channelPrefix}-${safeUsername}`,
@@ -140,10 +196,7 @@ async function createTicket(interaction, info) {
     parent: TICKET_CATEGORY_ID,
     topic: `ticket-user:${interaction.user.id}`,
     permissionOverwrites: [
-      {
-        id: interaction.guild.id,
-        deny: [PermissionsBitField.Flags.ViewChannel],
-      },
+      { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
       {
         id: interaction.user.id,
         allow: [
@@ -167,26 +220,20 @@ async function createTicket(interaction, info) {
   });
 
   const closeRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("ticket_close")
-      .setLabel("Chiudi Ticket")
-      .setEmoji("🔒")
-      .setStyle(ButtonStyle.Danger)
+    new ButtonBuilder().setCustomId("ticket_close").setLabel("Chiudi Ticket").setEmoji("🔒").setStyle(ButtonStyle.Danger)
   );
 
   const ticketEmbed = new EmbedBuilder()
     .setColor(info.color)
     .setTitle(`${info.emoji} ${info.label}`)
-    .setDescription(
-      [
-        `Ciao ${interaction.user}, benvenuto nel tuo ticket.`,
-        "",
-        info.description,
-        "",
-        "📌 Attendi la risposta dello staff.",
-        "🔒 Quando il problema è risolto, premi **Chiudi Ticket**.",
-      ].join("\n")
-    )
+    .setDescription([
+      `Ciao ${interaction.user}, benvenuto nel tuo ticket.`,
+      "",
+      info.description,
+      "",
+      "📌 Attendi la risposta dello staff.",
+      "🔒 Quando il problema è risolto, premi **Chiudi Ticket**.",
+    ].join("\n"))
     .setFooter({ text: "Bordo Campo | Sistema Ticket" });
 
   await ticketChannel.send({
@@ -241,6 +288,24 @@ async function closeTicket(interaction) {
 module.exports = async (interaction) => {
   try {
     if (interaction.isChatInputCommand()) {
+      if (interaction.commandName === "profilo") return handleProfilo(interaction);
+
+      if (
+        config.LINKED_GUILDS.includes(interaction.guildId) &&
+        !["profilo", "classifica", "ticketpanel"].includes(interaction.commandName)
+      ) {
+        await addXP({
+          client: interaction.client,
+          user: interaction.user,
+          amount: config.XP.MESSAGE_OR_COMMAND,
+          reason: `Comando /${interaction.commandName}`,
+          sourceGuildId: interaction.guildId,
+          incrementMessages: false,
+        });
+      }
+
+      if (interaction.commandName === "classifica") return handleClassifica(interaction);
+
       if (interaction.commandName === "ticketpanel") {
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
           return interaction.reply({
@@ -248,28 +313,21 @@ module.exports = async (interaction) => {
             flags: 64,
           });
         }
-
         return sendTicketPanel(interaction);
       }
     }
 
     if (interaction.isButton()) {
       const ticketInfo = getTicketInfo(interaction.customId);
-
-      if (ticketInfo) {
-        return createTicket(interaction, ticketInfo);
-      }
-
-      if (interaction.customId === "ticket_close") {
-        return closeTicket(interaction);
-      }
+      if (ticketInfo) return createTicket(interaction, ticketInfo);
+      if (interaction.customId === "ticket_close") return closeTicket(interaction);
     }
   } catch (error) {
     console.error("❌ Errore interactionCreate:", error);
 
     if (interaction.isRepliable()) {
       const payload = {
-        content: "❌ Si è verificato un errore nel sistema ticket.",
+        content: "❌ Si è verificato un errore nel sistema ticket/XP.",
         flags: 64,
       };
 

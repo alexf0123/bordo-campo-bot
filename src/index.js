@@ -7,9 +7,10 @@ const {
   Events,
 } = require("discord.js");
 
+const config = require("./config");
+const messageCreate = require("./events/messageCreate");
 const interactionCreate = require("./events/interactionCreate");
-
-console.log("✅ EVENTO interactionCreate IMPORTATO");
+const guildMemberUpdate = require("./events/guildMemberUpdate");
 
 const client = new Client({
   intents: [
@@ -23,16 +24,27 @@ const client = new Client({
     Partials.Channel,
     Partials.Message,
     Partials.User,
+    Partials.GuildMember,
   ],
 });
 
 client.once(Events.ClientReady, () => {
   console.log(`✅ Bot online come ${client.user.tag}`);
-  console.log("✅ Sistema ticket caricato");
+  console.log("✅ XP multi-server attivo");
+  console.log("✅ Ticket system attivo");
+  console.log("✅ Server collegati:", config.LINKED_GUILDS.join(", "));
+});
+
+client.on(Events.MessageCreate, async (message) => {
+  await messageCreate(message);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
   await interactionCreate(interaction);
+});
+
+client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+  await guildMemberUpdate(oldMember, newMember);
 });
 
 client.login(process.env.DISCORD_TOKEN).catch((error) => {
