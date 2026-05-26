@@ -33,4 +33,9 @@ module.exports = {
     4: 1400,
     5: 2500,
   },
+
+  XP_RULES: {
+    MAIN_MESSAGE_XP: 2,
+    OTHER_MESSAGE_XP: 1,
+  },
 };
