@@ -4,17 +4,11 @@ const {
   Client,
   GatewayIntentBits,
   Partials,
-  EmbedBuilder,
   Events,
 } = require("discord.js");
 
-require("./database");
-
-const config = require("./config");
-const messageCreate = require("./events/messageCreate");
 const interactionCreate = require("./events/interactionCreate");
 
-console.log("✅ EVENTO messageCreate IMPORTATO");
 console.log("✅ EVENTO interactionCreate IMPORTATO");
 
 const client = new Client({
@@ -34,16 +28,11 @@ const client = new Client({
 
 client.once(Events.ClientReady, () => {
   console.log(`✅ Bot online come ${client.user.tag}`);
-  console.log("✅ Supabase collegato");
-  console.log("✅ Server collegati caricati:", config.LINKED_GUILDS.join(", "));
-});
-
-client.on(Events.MessageCreate, async (message) => {
-  await messageCreate(message);
+  console.log("✅ Sistema ticket caricato");
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
-  await interactionCreate(interaction, client);
+  await interactionCreate(interaction);
 });
 
 client.login(process.env.DISCORD_TOKEN).catch((error) => {
