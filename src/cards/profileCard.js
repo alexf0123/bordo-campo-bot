@@ -2,8 +2,7 @@ const { AttachmentBuilder } = require("discord.js");
 const { createCanvas, loadImage } = require("canvas");
 const path = require("path");
 
-// Versione definitiva NO FONT: niente Fontconfig, niente quadratini.
-// Tutte le scritte sono disegnate con font vettoriale interno pixel premium.
+// Profile Card allineata - no font system, no Fontconfig.
 
 const FONT = {
   "A":["01110","10001","10001","11111","10001","10001","10001"],"B":["11110","10001","10001","11110","10001","10001","11110"],
@@ -90,53 +89,50 @@ function levelBadgePath(level) {
   return path.join(process.cwd(), "assets", "levels", `livello${l}.png`);
 }
 
-function panel(ctx, x, y, w, h, color, title, value, valueScale=7) {
+function panel(ctx, x, y, w, h, color, title, value, valueScale=6) {
   ctx.save();
-  rr(ctx,x,y,w,h,20);
-  const bg = ctx.createLinearGradient(x,y,x+w,y+h);
+  rr(ctx,x,y,w,h,18);
+  const bg=ctx.createLinearGradient(x,y,x+w,y+h);
   bg.addColorStop(0,"rgba(12,26,56,.96)");
   bg.addColorStop(1,"rgba(6,8,22,.96)");
-  ctx.fillStyle = bg; ctx.fill();
-  ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.shadowColor = color; ctx.shadowBlur = 12; ctx.stroke();
-  ctx.shadowBlur = 0;
+  ctx.fillStyle=bg; ctx.fill();
+  ctx.strokeStyle=color; ctx.lineWidth=3; ctx.shadowColor=color; ctx.shadowBlur=10; ctx.stroke(); ctx.shadowBlur=0;
 
-  drawText(ctx, title, x+24, y+24, 4, color, w-48);
-  drawText(ctx, String(value), x+24, y+h-58, valueScale, "#ffffff", w-48);
+  drawText(ctx, title, x+22, y+20, 3, color, w-44);
+  drawText(ctx, String(value), x+22, y+62, valueScale, "#ffffff", w-44);
   ctx.restore();
 }
 
 async function createProfileCard(userData, avatarUrl) {
   const W=1600,H=900;
-  const canvas = createCanvas(W,H);
-  const ctx = canvas.getContext("2d");
+  const canvas=createCanvas(W,H);
+  const ctx=canvas.getContext("2d");
 
-  const username = clean(userData.username || "UTENTE").slice(0,18);
-  const level = Number(userData.level || 0);
-  const xp = Number(userData.xp || 0);
-  const rank = userData.rank || "-";
-  const messages = Number(userData.messages || 0);
-  const streak = Number(userData.streak || 0);
-  const currentXp = Number(userData.currentXp || xp);
-  const requiredXp = Number(userData.requiredXp || 300);
-  const progress = Math.max(0, Math.min(1, currentXp / Math.max(requiredXp,1)));
+  const username=clean(userData.username || "UTENTE").slice(0,18);
+  const level=Number(userData.level || 0);
+  const xp=Number(userData.xp || 0);
+  const rank=userData.rank || "-";
+  const messages=Number(userData.messages || 0);
+  const streak=Number(userData.streak || 0);
+  const currentXp=Number(userData.currentXp || xp);
+  const requiredXp=Number(userData.requiredXp || 300);
+  const progress=Math.max(0,Math.min(1,currentXp/Math.max(requiredXp,1)));
 
-  // BG
-  const bg = ctx.createLinearGradient(0,0,W,H);
+  const bg=ctx.createLinearGradient(0,0,W,H);
   bg.addColorStop(0,"#020a14"); bg.addColorStop(.5,"#050816"); bg.addColorStop(1,"#1b062c");
   ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
 
-  let g = ctx.createRadialGradient(260,270,10,260,270,540);
+  let g=ctx.createRadialGradient(260,270,10,260,270,540);
   g.addColorStop(0,"rgba(0,216,255,.34)"); g.addColorStop(1,"rgba(0,216,255,0)");
   ctx.fillStyle=g; ctx.fillRect(0,0,800,760);
 
-  g = ctx.createRadialGradient(1280,250,10,1280,250,520);
+  g=ctx.createRadialGradient(1280,250,10,1280,250,520);
   g.addColorStop(0,"rgba(196,60,255,.24)"); g.addColorStop(1,"rgba(196,60,255,0)");
   ctx.fillStyle=g; ctx.fillRect(860,0,740,700);
 
-  // frame
   rr(ctx,55,48,1490,805,44);
   ctx.fillStyle="rgba(5,10,25,.94)"; ctx.fill();
-  const br = ctx.createLinearGradient(55,48,1545,853);
+  const br=ctx.createLinearGradient(55,48,1545,853);
   br.addColorStop(0,"#00d8ff"); br.addColorStop(.55,"#347dff"); br.addColorStop(1,"#c43cff");
   ctx.strokeStyle=br; ctx.lineWidth=7; ctx.shadowColor="#00d8ff"; ctx.shadowBlur=15; ctx.stroke(); ctx.shadowBlur=0;
 
@@ -144,50 +140,55 @@ async function createProfileCard(userData, avatarUrl) {
   for(let y=95;y<810;y+=24){ ctx.beginPath(); ctx.moveTo(90,y); ctx.lineTo(1510,y); ctx.stroke(); }
   ctx.globalAlpha=1;
 
-  // avatar
   try {
-    const av = await loadImage(avatarUrl);
+    const av=await loadImage(avatarUrl);
     ctx.save(); ctx.beginPath(); ctx.arc(270,292,178,0,Math.PI*2); ctx.clip();
     ctx.drawImage(av,92,114,356,356); ctx.restore();
     ctx.beginPath(); ctx.arc(270,292,193,0,Math.PI*2); ctx.strokeStyle="#00d8ff"; ctx.lineWidth=9; ctx.shadowColor="#00d8ff"; ctx.shadowBlur=18; ctx.stroke();
     ctx.beginPath(); ctx.arc(270,292,212,0,Math.PI*2); ctx.strokeStyle="#c43cff"; ctx.lineWidth=4; ctx.shadowColor="#c43cff"; ctx.shadowBlur=14; ctx.stroke(); ctx.shadowBlur=0;
   } catch(e){}
 
-  // badge smaller and higher
   try {
-    const badge = await loadImage(levelBadgePath(level));
-    ctx.drawImage(badge, 1135, 82, 285, 285);
+    const badge=await loadImage(levelBadgePath(level));
+    ctx.drawImage(badge, 1145, 82, 250, 250);
   } catch(e){}
 
-  // header
-  drawText(ctx,"BORDO CAMPO",800,95,5,"#00d8ff",500,"center");
-  drawText(ctx,"PROFILO PLAYER",800,158,5,"#a9b8dc",560,"center");
-  drawText(ctx,username,800,235,8,"#ffffff",650,"center");
-  drawText(ctx,"XP GLOBALE COMMUNITY",800,330,4,"#00d8ff",560,"center");
+  // Header più compatto e centrato
+  drawText(ctx,"BORDO CAMPO",800,88,5,"#00d8ff",500,"center");
+  drawText(ctx,"PROFILO PLAYER",800,148,5,"#a9b8dc",560,"center");
+  drawText(ctx,username,800,220,7,"#ffffff",650,"center");
+  drawText(ctx,"XP GLOBALE COMMUNITY",800,308,4,"#00d8ff",560,"center");
 
-  // main stats aligned and no overlap
-  panel(ctx, 500, 405, 255, 150, "#00d8ff", "LIVELLO", level, 9);
-  panel(ctx, 790, 405, 335, 150, "#c43cff", "XP TOTALI", `${fmt(xp)} XP`, 6);
-  panel(ctx, 1160, 405, 270, 150, "#ffd166", "RANK", `#${rank}`, 8);
+  // Box più bassi e allineati
+  panel(ctx, 510, 382, 250, 135, "#00d8ff", "LIVELLO", level, 7);
+  panel(ctx, 800, 382, 335, 135, "#c43cff", "XP TOTALI", `${fmt(xp)} XP`, 5);
+  panel(ctx, 1175, 382, 255, 135, "#ffd166", "RANK", `#${rank}`, 6);
 
-  panel(ctx, 95, 610, 330, 125, "#00d8ff", "MESSAGGI", fmt(messages), 7);
-  panel(ctx, 465, 610, 320, 125, "#ff4d6d", "STREAK", `${streak} GIORNI`, 5);
-  panel(ctx, 825, 610, 320, 125, "#56ff96", "STATUS", "ATTIVO", 5);
-  panel(ctx, 1185, 610, 270, 125, "#ffd166", "NETWORK", "BC", 8);
+  // Valori più piccoli per evitare tagli
+  panel(ctx, 95, 592, 330, 112, "#00d8ff", "MESSAGGI", fmt(messages), 6);
+  panel(ctx, 465, 592, 320, 112, "#ff4d6d", "STREAK", `${streak} GIORNI`, 4);
+  panel(ctx, 825, 592, 320, 112, "#56ff96", "STATUS", "ATTIVO", 4);
+  panel(ctx, 1185, 592, 270, 112, "#ffd166", "NETWORK", "BC", 6);
 
-  // progress
-  drawText(ctx,"PROGRESSO LIVELLO",95,790,4,"#00d8ff",440);
-  rr(ctx,410,762,810,42,21); ctx.fillStyle="rgba(255,255,255,.10)"; ctx.fill();
-  rr(ctx,410,762,Math.max(35,810*progress),42,21);
-  const pg=ctx.createLinearGradient(410,762,1220,762);
+  // Progress completamente allineato
+  const labelY = 752;
+  const barX = 420;
+  const barY = 742;
+  const barW = 760;
+  const barH = 36;
+
+  drawText(ctx,"PROGRESSO LIVELLO",95,labelY,3,"#00d8ff",300);
+  rr(ctx,barX,barY,barW,barH,18); ctx.fillStyle="rgba(255,255,255,.10)"; ctx.fill();
+  rr(ctx,barX,barY,Math.max(34,barW*progress),barH,18);
+  const pg=ctx.createLinearGradient(barX,barY,barX+barW,barY);
   pg.addColorStop(0,"#00d8ff"); pg.addColorStop(.55,"#347dff"); pg.addColorStop(1,"#c43cff");
   ctx.fillStyle=pg; ctx.shadowColor="#00d8ff"; ctx.shadowBlur=14; ctx.fill(); ctx.shadowBlur=0;
-  drawText(ctx,`${fmt(currentXp)} / ${fmt(requiredXp)} XP`,1260,775,4,"#ffffff",300);
+  drawText(ctx,`${fmt(currentXp)} / ${fmt(requiredXp)} XP`,1225,748,3,"#ffffff",310);
 
-  drawText(ctx,"BORDO CAMPO  SISTEMA LIVELLI",800,830,3,"#6edfff",520,"center");
+  drawText(ctx,"BORDO CAMPO  SISTEMA LIVELLI",800,815,3,"#6edfff",520,"center");
 
-  return new AttachmentBuilder(canvas.toBuffer("image/png"), { name: "profile-card.png" });
+  return new AttachmentBuilder(canvas.toBuffer("image/png"), { name:"profile-card.png" });
 }
 
-module.exports = createProfileCard;
-module.exports.createProfileCard = createProfileCard;
+module.exports=createProfileCard;
+module.exports.createProfileCard=createProfileCard;
