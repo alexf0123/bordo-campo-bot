@@ -1,2 +1,13 @@
 [phases.setup]
-aptPkgs = ["fontconfig", "fonts-dejavu-core", "libcairo2", "libpango-1.0-0", "libjpeg62-turbo", "libgif7", "librsvg2-2"]
+aptPkgs = [
+  "fontconfig",
+  "fonts-dejavu-core",
+  "libcairo2",
+  "libpango-1.0-0",
+  "libjpeg62-turbo",
+  "libgif7",
+  "librsvg2-2"
+]
+
+[variables]
+FONTCONFIG_PATH = "/etc/fonts"
