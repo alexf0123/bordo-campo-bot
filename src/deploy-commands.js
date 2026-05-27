@@ -16,6 +16,23 @@ const commands = [
     .setName("ticketpanel")
     .setDescription("Invia il pannello ticket nel canale configurato")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName("rimuovi_xp")
+    .setDescription("Rimuove XP a un utente")
+    .addUserOption((option) =>
+      option
+        .setName("utente")
+        .setDescription("Utente a cui rimuovere XP")
+        .setRequired(true)
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName("quantita")
+        .setDescription("Quantità di XP da rimuovere")
+        .setRequired(true)
+        .setMinValue(1)
+    ),
 ].map((command) => command.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
