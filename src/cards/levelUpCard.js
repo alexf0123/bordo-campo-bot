@@ -55,7 +55,7 @@ function panel(ctx, x, y, w, h, color, title, value, valueScale=6) {
   ctx.restore();
 }
 
-async function createProfileCard(userData, avatarUrl) {
+async function createLevelUpCard(userData, avatarUrl) {
   const W=1600,H=900;
   const canvas=createCanvas(W,H);
   const ctx=canvas.getContext("2d");
@@ -134,3 +134,6 @@ async function createProfileCard(userData, avatarUrl) {
 
 module.exports=createProfileCard;
 module.exports.createProfileCard=createProfileCard;
+
+module.exports=createLevelUpCard;
+module.exports.createLevelUpCard=createLevelUpCard;
