@@ -1,201 +1,92 @@
-const { createCanvas, loadImage } = require("canvas");
 
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
+const { AttachmentBuilder } = require("discord.js");
+const { createCanvas, loadImage, registerFont } = require("canvas");
+const path = require("path");
 
-function formatNumber(value) {
-  return new Intl.NumberFormat("it-IT").format(value || 0);
-}
+module.exports = async function createProfileCard(userData, avatarUrl) {
+    const canvas = createCanvas(1600, 900);
+    const ctx = canvas.getContext("2d");
 
-function getNextXp(level, levelXp) {
-  const nextLevel = Math.min((level || 0) + 1, 5);
-  return levelXp[nextLevel] || 2500;
-}
+    // BACKGROUND
+    const gradient = ctx.createLinearGradient(0, 0, 1600, 900);
+    gradient.addColorStop(0, "#041421");
+    gradient.addColorStop(1, "#140028");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 1600, 900);
 
-function getProgress(xp, level, levelXp) {
-  const current = levelXp[level] || 0;
-  const next = getNextXp(level, levelXp);
-  const needed = Math.max(next - current, 1);
+    // BORDER
+    ctx.strokeStyle = "#00d9ff";
+    ctx.lineWidth = 8;
+    ctx.strokeRect(20, 20, 1560, 860);
 
-  return Math.max(0, Math.min(1, ((xp || 0) - current) / needed));
-}
+    // USERNAME
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 72px Sans";
+    ctx.fillText(userData.username, 560, 180);
 
-async function createProfileCard(data) {
-  const {
-    username,
-    avatarUrl,
-    level,
-    xp,
-    messages,
-    streak,
-    rank,
-    levelXp,
-  } = data;
+    ctx.fillStyle = "#00d9ff";
+    ctx.font = "40px Sans";
+    ctx.fillText("PROFILO PLAYER", 560, 100);
 
-  const canvas = createCanvas(1200, 675);
-  const ctx = canvas.getContext("2d");
-
-  const bg = ctx.createLinearGradient(0, 0, 1200, 675);
-  bg.addColorStop(0, "#061826");
-  bg.addColorStop(1, "#170a28");
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, 1200, 675);
-
-  roundRect(ctx, 60, 55, 1080, 565, 36);
-  ctx.fillStyle = "rgba(5,10,25,0.92)";
-  ctx.fill();
-
-  const border = ctx.createLinearGradient(60, 55, 1140, 620);
-  border.addColorStop(0, "#00d4ff");
-  border.addColorStop(1, "#a020f0");
-  ctx.strokeStyle = border;
-  ctx.lineWidth = 6;
-  ctx.stroke();
-
-  ctx.font = "bold 34px Sans";
-  ctx.fillStyle = "#00d4ff";
-  ctx.fillText("PROFILO BORDO CAMPO", 110, 120);
-
-  ctx.font = "bold 58px Sans";
-  ctx.fillStyle = "#ffffff";
-  ctx.fillText(username || "Utente", 110, 190);
-
-  ctx.font = "24px Sans";
-  ctx.fillStyle = "#a8b3cf";
-  ctx.fillText("Sistema livelli e progressione", 110, 235);
-
-  try {
+    // AVATAR
     const avatar = await loadImage(avatarUrl);
-
     ctx.save();
     ctx.beginPath();
-    ctx.arc(960, 165, 92, 0, Math.PI * 2);
+    ctx.arc(250, 250, 170, 0, Math.PI * 2, true);
+    ctx.closePath();
     ctx.clip();
-    ctx.drawImage(avatar, 868, 73, 184, 184);
+    ctx.drawImage(avatar, 80, 80, 340, 340);
     ctx.restore();
 
-    ctx.beginPath();
-    ctx.arc(960, 165, 98, 0, Math.PI * 2);
-    ctx.strokeStyle = "#00d4ff";
-    ctx.lineWidth = 6;
-    ctx.stroke();
-  } catch {}
+    // LEVEL BADGE
+    const levelImage = await loadImage(
+        path.join(__dirname, "../../assets/levels/livello" + userData.level + ".png")
+    );
 
-  const cards = [
-    {
-      x: 110,
-      y: 305,
-      w: 230,
-      title: "LIVELLO",
-      value: String(level || 0),
-      color: "#00d4ff",
-    },
-    {
-      x: 370,
-      y: 305,
-      w: 230,
-      title: "RANK",
-      value: `#${rank || "-"}`,
-      color: "#b14cff",
-    },
-    {
-      x: 630,
-      y: 305,
-      w: 390,
-      title: "XP TOTALI",
-      value: `${formatNumber(xp)} XP`,
-      color: "#ffd166",
-    },
-  ];
+    ctx.drawImage(levelImage, 1120, 80, 340, 340);
 
-  for (const card of cards) {
-    roundRect(ctx, card.x, card.y, card.w, 120, 24);
+    // BOXES
+    function box(x, y, w, h, color, title, value) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4;
+        ctx.strokeRect(x, y, w, h);
 
-    ctx.fillStyle = "rgba(20,30,60,0.92)";
-    ctx.fill();
+        ctx.fillStyle = color;
+        ctx.font = "30px Sans";
+        ctx.fillText(title, x + 20, y + 45);
 
-    ctx.strokeStyle = card.color;
-    ctx.lineWidth = 2;
-    ctx.stroke();
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 55px Sans";
+        ctx.fillText(value, x + 20, y + 110);
+    }
 
-    ctx.font = "bold 20px Sans";
-    ctx.fillStyle = "#9db3ff";
-    ctx.fillText(card.title, card.x + 24, card.y + 38);
+    box(520, 340, 260, 150, "#00d9ff", "LIVELLO", String(userData.level));
+    box(820, 340, 320, 150, "#d946ef", "XP TOTALI", `${userData.xp} XP`);
+    box(1180, 340, 260, 150, "#ffd54a", "RANK", `#${userData.rank}`);
 
-    ctx.font = "bold 46px Sans";
+    box(80, 560, 380, 130, "#00d9ff", "MESSAGGI", String(userData.messages));
+    box(500, 560, 320, 130, "#ff4d6d", "STREAK", `${userData.streak}G`);
+    box(860, 560, 280, 130, "#4dff88", "STATUS", "ATTIVO");
+    box(1180, 560, 280, 130, "#b84dff", "NETWORK", "BC");
+
+    // XP BAR
+    ctx.fillStyle = "#111827";
+    ctx.fillRect(120, 760, 1200, 40);
+
+    const progress = Math.min(userData.currentXp / userData.requiredXp, 1);
+
+    const barGradient = ctx.createLinearGradient(0, 0, 1200, 0);
+    barGradient.addColorStop(0, "#00d9ff");
+    barGradient.addColorStop(1, "#d946ef");
+
+    ctx.fillStyle = barGradient;
+    ctx.fillRect(120, 760, 1200 * progress, 40);
+
     ctx.fillStyle = "#ffffff";
-    ctx.fillText(card.value, card.x + 24, card.y + 88);
-  }
+    ctx.font = "32px Sans";
+    ctx.fillText(`${userData.currentXp} / ${userData.requiredXp} XP`, 1340, 790);
 
-  const stats = [
-    {
-      x: 110,
-      title: "MESSAGGI",
-      value: formatNumber(messages),
-    },
-    {
-      x: 420,
-      title: "STREAK",
-      value: `${streak || 0} giorni`,
-    },
-    {
-      x: 730,
-      title: "STATUS",
-      value: (level || 0) >= 5 ? "MAX" : "ATTIVO",
-    },
-  ];
-
-  for (const stat of stats) {
-    roundRect(ctx, stat.x, 465, 270, 82, 18);
-
-    ctx.fillStyle = "rgba(255,255,255,0.05)";
-    ctx.fill();
-
-    ctx.strokeStyle = "#203d90";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.font = "bold 18px Sans";
-    ctx.fillStyle = "#9db3ff";
-    ctx.fillText(stat.title, stat.x + 24, 498);
-
-    ctx.font = "bold 26px Sans";
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(stat.value, stat.x + 24, 532);
-  }
-
-  const nextXp = getNextXp(level, levelXp);
-  const progress = getProgress(xp, level, levelXp);
-
-  ctx.font = "bold 22px Sans";
-  ctx.fillStyle = "#00d4ff";
-  ctx.fillText(`PROSSIMO LIVELLO: ${formatNumber(nextXp)} XP`, 110, 590);
-
-  roundRect(ctx, 500, 565, 520, 32, 16);
-  ctx.fillStyle = "rgba(255,255,255,0.08)";
-  ctx.fill();
-
-  roundRect(ctx, 500, 565, Math.max(20, 520 * progress), 32, 16);
-
-  const prog = ctx.createLinearGradient(500, 565, 1020, 565);
-  prog.addColorStop(0, "#00d4ff");
-  prog.addColorStop(1, "#a020f0");
-
-  ctx.fillStyle = prog;
-  ctx.fill();
-
-  return canvas.toBuffer("image/png");
-}
-
-module.exports = { createProfileCard };
+    return new AttachmentBuilder(canvas.toBuffer("image/png"), {
+        name: "profile-card.png"
+    });
+};
