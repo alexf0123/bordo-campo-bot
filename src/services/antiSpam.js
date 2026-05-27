@@ -1,8 +1,32 @@
 const config = require("../config");
 
 const userMessages = new Map();
+
 const STAFF_LOG_CHANNEL_ID = config.CHANNELS.STAFF_LOGS;
-const STAFF_ROLE_ID = "1498341567105339492";
+
+// Ruolo staff principale Bordo Campo
+const MAIN_STAFF_ROLE_ID = "1498341567105339492";
+
+// Ruoli autorizzati a inviare link divisi per server
+const LINK_ALLOWED_ROLES_BY_GUILD = {
+  // REAL RP
+  "1396149371468251236": [
+    "1496549900765368481",
+    "1496550265241866541",
+    "1496550821050192024",
+  ],
+
+  // BC FC
+  "1392747701308751943": [
+    "1398358193197027408",
+  ],
+
+  // RPCI
+  "1396908861566353479": [
+    "1398225204404289669",
+    "1507735305279635610",
+  ],
+};
 
 const BAD_SHORT_MESSAGES = new Set([
   "ok",
@@ -34,18 +58,39 @@ function normalize(content) {
     .trim();
 }
 
-async function isStaff(message) {
+async function hasAnyRole(message, roleIds) {
   try {
-    if (message.member?.roles?.cache?.has(STAFF_ROLE_ID)) return true;
+    if (!message.guild || !message.author) return false;
+
+    if (message.member?.roles?.cache) {
+      const hasCachedRole = roleIds.some((roleId) =>
+        message.member.roles.cache.has(roleId)
+      );
+
+      if (hasCachedRole) return true;
+    }
 
     const fetchedMember = await message.guild.members
       .fetch(message.author.id)
       .catch(() => null);
 
-    return Boolean(fetchedMember?.roles?.cache?.has(STAFF_ROLE_ID));
+    if (!fetchedMember?.roles?.cache) return false;
+
+    return roleIds.some((roleId) => fetchedMember.roles.cache.has(roleId));
   } catch {
     return false;
   }
+}
+
+async function canSendLinks(message) {
+  const guildId = message.guild?.id;
+
+  const allowedRoles = [
+    MAIN_STAFF_ROLE_ID,
+    ...(LINK_ALLOWED_ROLES_BY_GUILD[guildId] || []),
+  ];
+
+  return hasAnyRole(message, allowedRoles);
 }
 
 function onlyEmojiOrSymbols(content) {
@@ -93,13 +138,12 @@ async function checkAntiSpam(message) {
   const now = Date.now();
   const userId = message.author.id;
 
-  const staffUser = await isStaff(message);
+  const linkAllowed = await canSendLinks(message);
 
-  // Bypass link per staff autorizzato.
-  // Lo staff può mandare link e il messaggio NON viene cancellato.
-  // Manteniamo comunque no XP sui messaggi troppo corti/flood, ma niente blocco link.
-  if (staffUser && hasSuspiciousLink(content)) {
-    return { allowed: true, giveXp: true, reason: "staff_link_allowed" };
+  // Bypass link per ruoli autorizzati.
+  // Chi ha uno dei ruoli configurati può inviare link senza cancellazione.
+  if (linkAllowed && hasSuspiciousLink(content)) {
+    return { allowed: true, giveXp: true, reason: "authorized_link_allowed" };
   }
 
   if (!content || content.length === 0) {
@@ -126,7 +170,7 @@ async function checkAntiSpam(message) {
       [
         "🚨 **LINK/SPAM RILEVATO**",
         `Utente: ${message.author.tag} (${message.author.id})`,
-        `Server: ${message.guild.name}`,
+        `Server: ${message.guild.name} (${message.guild.id})`,
         `Canale: <#${message.channel.id}>`,
         `Messaggio eliminato: \`${message.content.slice(0, 300)}\``,
       ].join("\n")
@@ -159,7 +203,7 @@ async function checkAntiSpam(message) {
       [
         "🚨 **MESSAGGI RIPETUTI RILEVATI**",
         `Utente: ${message.author.tag} (${message.author.id})`,
-        `Server: ${message.guild.name}`,
+        `Server: ${message.guild.name} (${message.guild.id})`,
         `Canale: <#${message.channel.id}>`,
         `Messaggio eliminato: \`${message.content.slice(0, 300)}\``,
         "Azione: no XP + cancellazione messaggio",
@@ -177,7 +221,7 @@ async function checkAntiSpam(message) {
       [
         "🚨 **FLOOD RILEVATO**",
         `Utente: ${message.author.tag} (${message.author.id})`,
-        `Server: ${message.guild.name}`,
+        `Server: ${message.guild.name} (${message.guild.id})`,
         `Canale: <#${message.channel.id}>`,
         "Motivo: 5 messaggi in 10 secondi",
         "Azione: messaggio eliminato + no XP",
@@ -193,7 +237,7 @@ async function checkAntiSpam(message) {
       [
         "⚠️ **WARNING FLOOD**",
         `Utente: ${message.author.tag} (${message.author.id})`,
-        `Server: ${message.guild.name}`,
+        `Server: ${message.guild.name} (${message.guild.id})`,
         `Canale: <#${message.channel.id}>`,
         "Motivo: 3 messaggi in 5 secondi",
         "Azione: no XP sul messaggio",
@@ -203,7 +247,11 @@ async function checkAntiSpam(message) {
     return { allowed: true, giveXp: false, reason: "flood_warning" };
   }
 
-  return { allowed: true, giveXp: true, reason: staffUser ? "valid_staff" : "valid" };
+  return {
+    allowed: true,
+    giveXp: true,
+    reason: linkAllowed ? "valid_authorized_role" : "valid",
+  };
 }
 
 module.exports = {
